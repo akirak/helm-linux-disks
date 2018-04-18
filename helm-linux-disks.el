@@ -137,20 +137,20 @@ This is useful for removing a device with a LVM physical volume.")
   (when (yes-or-no-p (format "Deactivate %s VG with the following LVs?\n%s"
                              vg (shell-command-to-string
                                  (format "sudo lvs %s" (shell-quote-argument vg)))))
-    (process-lines "sudo" "vgchange" "-an" vg)))
+    (call-process "sudo" nil "*vgchange*" nil "vgchange" "-an" vg)))
 
 (defun helm-linux-disks--vg-activate (vg)
   "Activate a LVM volume group named VG."
-  (process-lines "sudo" "vgchange" "-ay" vg))
+  (call-process "sudo" nil "*vgchange*" nil "vgchange" "-ay" vg))
 
 (defun helm-linux-disks--vg-display (vg)
   "Run vgdisplay command on a LVM volume group named VG."
-  (with-current-buffer (generate-new-buffer "*vgdisplay*")
-    (insert (shell-command-to-string
-             (format "sudo vgdisplay %s" (shell-quote-argument vg))))
-    (local-set-key (kbd "q") #'quit-window)
-    (read-only-mode 1)
-    (pop-to-buffer (current-buffer))))
+  (let ((buf (generate-new-buffer-name (format "*vgdisplay %s*" vg))))
+    (call-process "sudo" nil buf nil "vgdisplay" vg)
+    (with-current-buffer buf
+      (local-set-key (kbd "q") #'quit-window)
+      (read-only-mode 1))
+    (pop-to-buffer buf)))
 
 ;;; helm-linux-disks.el ends here
 (provide 'helm-linux-disks)
