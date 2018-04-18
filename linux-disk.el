@@ -243,7 +243,7 @@ needs to contain information on the mount point."
       (pcase linux-disk-terminal-type
         ('term (call-interactively 'term))
         ('ansi-term (call-interactively 'ansi-term))
-        ('multi-term (multi-term))
+        ('multi-term (progn (require 'multi-term) (multi-term)))
         ('eshell (eshell t))
         ((pred stringp) (async-shell-command linux-disk-terminal-type))))))
 
