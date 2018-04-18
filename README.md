@@ -14,7 +14,7 @@
   - Activate/deactivate a LVM volume group
 - Run dired on the mount point of a device
 - Run terminal on the mount point of a device
-- You can operate on multiple devices without closing the Helm window through `helm-persistent-action`
+- You can operate on multiple devices without closing the Helm window through `helm-execute-persistent-action`
 
 ## Prerequisites
 
@@ -63,7 +63,7 @@ Note that there is no dwim action for a volume group. The default action deactiv
 
 Because `helm-linux-disks` is based on Helm, the following commands are supported in the session:
 
-- `helm-persistent-action` (default `C-j`) runs the default action but keep the Helm window open
+- `helm-execute-persistent-action` (default `C-j`) runs the default action but keep the Helm window open
 - `helm-refresh` (default `C-c C-u`) refresh contents in the Helm buffer
 
 This can be especially useful in removing a device. For example, if you have to remove a storage device `/dev/sdb` containing a file system `/dev/sdb1` which is currently mounted at somewhere, you can take the following steps in `helm-linux-disks`:
@@ -88,7 +88,7 @@ You can even operate on a device with an encrypted partition containing a LVM ph
 3. Lock the device.
 4. Power off the device.
 
-Note that the pattern of running `C-j` (`helm-persistent-action`) and `C-c C-u` (`helm-refresh`) in sequence is so common when you use `helm-linux-disks`.
+Note that the pattern of running `C-j` (`helm-execute-persistent-action`) and `C-c C-u` (`helm-refresh`) in sequence is so common when you use `helm-linux-disks`.
 
 ## Non-goals
 
