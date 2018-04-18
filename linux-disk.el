@@ -171,16 +171,13 @@ STRUCT must be a `linux-disk' object representing an open LUKS device."
 
 STRUCT should be a `linux-disk' object on any block device that can be handled
 by udisks."
-  (with-current-buffer (generate-new-buffer "*udisksctl info*")
-    (insert (shell-command-to-string
-             (string-join (list "udisksctl"
-                                "info"
-                                "--block-device"
-                                (shell-quote-argument (linux-disk-path struct)))
-                          " ")))
-    (local-set-key (kbd "q") #'quit-window)
-    (read-only-mode 1)
-    (pop-to-buffer (current-buffer))))
+  (let ((buf (generate-new-buffer-name "*udisksctl info*")))
+    (call-process "udisksctl" nil buf t
+                  "info" "--block-device" (linux-disk-path struct))
+    (with-current-buffer buf
+      (local-set-key (kbd "q") #'quit-window)
+      (read-only-mode 1))
+    (pop-to-buffer buf)))
 
 (defun linux-disk-udisksctl-poweroff (struct)
   "Power off a device using udisksctl command.
