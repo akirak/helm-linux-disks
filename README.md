@@ -1,13 +1,13 @@
 # helm-linux-disks
 
-[udiskie](https://github.com/coldfix/udiskie) is a useful program for mounting/unmounting removable devices in Linux, but it doesn't support LVM at present. This `helm-linux-disks` package provides an alternative, manual interface for mounting volumes through udisks2 in Linux with primitive support for LVM. 
+[udiskie](https://github.com/coldfix/udiskie) is a useful program for mounting/unmounting removable devices in Linux, but it doesn't support LVM at present. This `helm-linux-disks` package provides an alternative, manual interface for mounting volumes in Linux through udisks2 with primitive support for LVM. 
 
 ## Features
 
 - Display a hierarchy of block devices using `lsblk` command
 - Use `udisksctl` command to run a bunch of operations on a device
   - Mount/unmount a file system
-    - Kill Emacs buffers under the mount point before unmounting a file system
+    - Kill Emacs buffers under its mount point before unmounting the file system
   - Lock/unlock a dm-crypted device
   - Power off a device
 - Primitive support for LVM which helps you handle a LVM-on-LUKS device
