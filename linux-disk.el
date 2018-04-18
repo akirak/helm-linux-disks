@@ -197,12 +197,17 @@ normally the entire device such as /dev/sdb."
 
 STRUCT should be a `linux-disk' object representing a physical device. This
 normally has a dynamically mapped path like /dev/mapper/luks-XXXX."
-  (unless (linux-disk-crypt-target-p struct)
-    (error "not a decryption device"))
-  (let ((path (linux-disk-path struct)))
-    (message "locking %s..." path)
-    (start-process "luks-close" nil
-                   "sudo" "cryptsetup" "luksClose" path)))
+  (if (or (linux-disk-crypt-target-p struct)
+          (linux-disk-luks-open-p struct))
+      (let ((path (linux-disk-path struct)))
+        (message "locking %s..." path)
+        (when (/= 0 (call-process "sudo" nil "*cryptsetup*" nil
+                                  "cryptsetup" "luksClose" path))
+          (with-current-buffer "*cryptsetup*"
+            (local-set-key "q" #'quit-window)
+            (setq buffer-read-only t))
+          (pop-to-buffer "*cryptsetup*")))
+    (error "not a decryption device")))
 
 ;;;;; Running dired on the mount point
 
