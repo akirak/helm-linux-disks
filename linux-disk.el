@@ -124,8 +124,8 @@ object."
     (error "not mountable"))
   (let ((path (linux-disk-path struct)))
     (message "mounting %s using udisksctl..." path)
-    (start-process "udisksctl-mount" nil
-                   "udisksctl" "mount" "--block-device" path)))
+    (linux-disk--udisksctl-run "udisksctl-mount"
+                               "mount" "--block-device" path)))
 
 (defun linux-disk-udisksctl-unmount (struct)
   "Unmount a file system volume using udisksctl command.
@@ -136,8 +136,8 @@ STRUCT must be a `linux-disk' object representing a mounted file system object."
   (if (linux-disk-ensure-unmountable (linux-disk-mountpoint struct))
       (let ((path (linux-disk-path struct)))
         (message "unmounting %s using udisksctl..." path)
-        (start-process "udisksctl-unmount" nil
-                       "udisksctl" "unmount" "--block-device" path))
+        (linux-disk--udisksctl-run "udisksctl-unmount"
+                                   "unmount" "--block-device" path))
     (message "Not unmountable")))
 
 (defun linux-disk-udisksctl-lock (struct)
@@ -148,8 +148,8 @@ STRUCT must be a `linux-disk' object representing a closed LUKS device."
     (error "not a decryption device"))
   (let ((path (linux-disk-path struct)))
     (message "locking %s..." path)
-    (start-process "udisksctl-lock" nil
-                   "udisksctl" "lock" "--block-device" path)))
+    (linux-disk--udisksctl-run "udisksctl-lock"
+                               "lock" "--block-device" path)))
 
 (defun linux-disk-udisksctl-unlock (struct)
   "Unlock a crypted device using udisksctl command.
@@ -187,8 +187,8 @@ normally the entire device such as /dev/sdb."
   (let ((path (linux-disk-path struct)))
     (when (yes-or-no-p (format "Are you sure you want to power off %s? "
                                path))
-      (start-process "udisksctl-poweroff" nil
-                     "udisksctl" "power-off" "--block-device" path))))
+      (linux-disk--udisksctl-run "udisksctl-poweroff"
+                                 "power-off" "--block-device" path))))
 
 ;;;;; Operations using cryptsetup
 
@@ -255,6 +255,26 @@ If a string is given as the value of this variable, it is run as a terminal
                  (const eshell)
                  string)
   :group '(linux-disk helm-linux-disks))
+
+;;;; udisksctl utilities
+(defconst linux-disk--udisksctl-buffer "*udisksctl*"
+  "The name of the buffer to keep the output from udisksctl.")
+
+(defun linux-disk--udisksctl-run (name &rest args)
+  (with-current-buffer (get-buffer-create linux-disk--udisksctl-buffer)
+    (erase-buffer)
+    (local-set-key "q" #'quit-window)
+    (setq-local truncate-lines nil))
+  (make-process :name name
+                :buffer linux-disk--udisksctl-buffer
+                :sentinel #'linux-disk--udisksctl-sentinel
+                :command (cons "udisksctl" args)))
+
+(defun linux-disk--udisksctl-sentinel (_ event)
+  (when (or (string-prefix-p "failed with code " event)
+            (string-prefix-p "exited abnormally with code " event))
+    (message "udisksctl failed or exited abnormally with non-zero exit code")
+    (display-buffer linux-disk--udisksctl-buffer)))
 
 ;;;; Other utility functions
 
