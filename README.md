@@ -18,7 +18,7 @@
 
 ## Prerequisites
 
-- Emacs
+- Emacs 25.1
 - Helm
 - [udisks2](https://wiki.archlinux.org/index.php/Udisks) package and `udisksctl` command
 

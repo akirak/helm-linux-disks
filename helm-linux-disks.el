@@ -4,7 +4,7 @@
 
 ;; Author: Akira Komamura <akira.komamura@gmail.com>
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "24.1") (helm "1.9.4"))
+;; Package-Requires: ((emacs "25.1") (helm "1.9.4"))
 ;; URL: https://github.com/akirak/helm-linux-disks
 
 ;; This file is not part of GNU Emacs.
@@ -34,6 +34,7 @@
 (require 'linux-disk)
 (require 'helm)
 (require 'cl-lib)
+(require 'seq)
 
 ;;;###autoload
 (defun helm-linux-disks ()
