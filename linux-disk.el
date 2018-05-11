@@ -243,7 +243,7 @@ If a string is given as the value of this variable, it is run as a terminal
                  (const multi-term)
                  (const eshell)
                  string)
-  :group '(linux-disk helm-linux-disks))
+  :group 'linux-disk)
 
 (defun linux-disk-terminal (struct)
   "Open a terminal on the mount point of STRUCT.
