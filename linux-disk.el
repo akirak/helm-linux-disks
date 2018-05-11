@@ -60,7 +60,7 @@
   (string-equal (linux-disk-fstype struct) "crypto_LUKS"))
 
 (defun linux-disk-luks-close-p (struct)
-  "Return non-nil if STRUCT is a closed LUKS volume. "
+  "Return non-nil if STRUCT is a closed LUKS volume."
   (and (linux-disk-luks-p struct)
        (not (linux-disk-has-child-p struct))))
 
@@ -79,8 +79,8 @@
   "Mount (unlock) or unmount (lock) the device depending on the state of STRUCT.
 
 STRUCT should be a `linux-disk' object. If the argument represents an unmounted
-(locked) device, it is mounted (unlocked). If the argument represents a mounted
-(unlocked) device, it is unmounted (locked)."
+\(locked) device, it is mounted (unlocked). If the argument represents a mounted
+\(unlocked) device, it is unmounted (locked)."
   (cond
    ((linux-disk-mounted-p struct) (linux-disk-unmount struct))
    ((linux-disk-mountable-p struct) (linux-disk-mount struct))
@@ -96,22 +96,22 @@ STRUCT should be a `linux-disk' object. If the argument represents an unmounted
 STRUCT must be a `linux-disk' object representing an unmounted file system
 object."
   (unless (linux-disk-mountable-p struct)
-    (error "not mountable"))
+    (error "Not mountable"))
   (cond
    ((executable-find "udisksctl") (linux-disk-udisksctl-mount struct))
    ;; TODO: mount using mount
-   (t (error "udisksctl is not available"))))
+   (t (error "Command udisksctl is not available"))))
 
 (defun linux-disk-unmount (struct)
   "Unmount a file system volume.
 
 STRUCT must be a `linux-disk' object representing an mounted file system object."
   (unless (linux-disk-mounted-p struct)
-    (error "not mounted"))
+    (error "Not mounted"))
   (cond
    ((executable-find "udisksctl") (linux-disk-udisksctl-unmount struct))
    ;; TODO: unmount using umount
-   (t (error "udisksctl is not available"))))
+   (t (error "Command udisksctl is not available"))))
 
 ;;;;; Operations using udisksctl
 
@@ -121,7 +121,7 @@ STRUCT must be a `linux-disk' object representing an mounted file system object.
 STRUCT must be a `linux-disk' object representing an unmounted file system
 object."
   (unless (linux-disk-mountable-p struct)
-    (error "not mountable"))
+    (error "Not mountable"))
   (let ((path (linux-disk-path struct)))
     (message "mounting %s using udisksctl..." path)
     (linux-disk--udisksctl-run "udisksctl-mount"
@@ -132,7 +132,7 @@ object."
 
 STRUCT must be a `linux-disk' object representing a mounted file system object."
   (unless (linux-disk-mounted-p struct)
-    (error "not mounted"))
+    (error "Not mounted"))
   (if (linux-disk-ensure-unmountable (linux-disk-mountpoint struct))
       (let ((path (linux-disk-path struct)))
         (message "unmounting %s using udisksctl..." path)
@@ -145,7 +145,7 @@ STRUCT must be a `linux-disk' object representing a mounted file system object."
 
 STRUCT must be a `linux-disk' object representing a closed LUKS device."
   (unless (linux-disk-luks-open-p struct)
-    (error "not a decryption device"))
+    (error "Not a decryption device"))
   (let ((path (linux-disk-path struct)))
     (message "locking %s..." path)
     (linux-disk--udisksctl-run "udisksctl-lock"
@@ -156,7 +156,7 @@ STRUCT must be a `linux-disk' object representing a closed LUKS device."
 
 STRUCT must be a `linux-disk' object representing an open LUKS device."
   (unless (linux-disk-luks-close-p struct)
-    (error "not a LUKS device"))
+    (error "Not a LUKS device"))
   (let ((path (linux-disk-path struct)))
     (message "unlocking %s..." path)
     (eshell-command
@@ -207,7 +207,7 @@ normally has a dynamically mapped path like /dev/mapper/luks-XXXX."
             (local-set-key "q" #'quit-window)
             (setq buffer-read-only t))
           (pop-to-buffer "*cryptsetup*")))
-    (error "not a decryption device")))
+    (error "Not a decryption device")))
 
 ;;;;; Running dired on the mount point
 
@@ -218,7 +218,7 @@ STRUCT should be a `linux-disk' object representing a mounted device. It also
 needs to contain information on the mount point."
   (let ((mountpoint (linux-disk-mountpoint struct)))
     (unless mountpoint
-      (error "not mounted"))
+      (error "Not mounted"))
     (dired mountpoint)))
 
 (defun linux-disk-dired-other-window (struct)
@@ -228,26 +228,10 @@ STRUCT should be a `linux-disk' object representing a mounted device. It also
 needs to contain information on the mount point."
   (let ((mountpoint (linux-disk-mountpoint struct)))
     (unless mountpoint
-      (error "not mounted"))
+      (error "Not mounted"))
     (dired-other-window mountpoint)))
 
 ;;;;; Running terminal on the mount point
-
-(defun linux-disk-terminal (struct)
-  "Open a terminal on the mount point of STRUCT.
-
-STRUCT should be a `linux-disk' object representing a mounted device. It also
-needs to contain information on the mount point."
-  (let ((mountpoint (linux-disk-mountpoint struct)))
-    (unless mountpoint
-      (error "not mounted"))
-    (let ((default-directory mountpoint))
-      (pcase linux-disk-terminal-type
-        ('term (call-interactively 'term))
-        ('ansi-term (call-interactively 'ansi-term))
-        ('multi-term (progn (require 'multi-term) (multi-term)))
-        ('eshell (eshell t))
-        ((pred stringp) (async-shell-command linux-disk-terminal-type))))))
 
 (defcustom linux-disk-terminal-type 'term
   "Type of terminal invoked by `linux-disk-terminal' command.
@@ -261,11 +245,28 @@ If a string is given as the value of this variable, it is run as a terminal
                  string)
   :group '(linux-disk helm-linux-disks))
 
+(defun linux-disk-terminal (struct)
+  "Open a terminal on the mount point of STRUCT.
+
+STRUCT should be a `linux-disk' object representing a mounted device. It also
+needs to contain information on the mount point."
+  (let ((mountpoint (linux-disk-mountpoint struct)))
+    (unless mountpoint
+      (error "Not mounted"))
+    (let ((default-directory mountpoint))
+      (pcase linux-disk-terminal-type
+        ('term (call-interactively 'term))
+        ('ansi-term (call-interactively 'ansi-term))
+        ('multi-term (progn (require 'multi-term) (multi-term)))
+        ('eshell (eshell t))
+        ((pred stringp) (async-shell-command linux-disk-terminal-type))))))
+
 ;;;; udisksctl utilities
 (defconst linux-disk--udisksctl-buffer "*udisksctl*"
   "The name of the buffer to keep the output from udisksctl.")
 
 (defun linux-disk--udisksctl-run (name &rest args)
+  "Run udisksctl command with NAME as a process name and ARGS."
   (with-current-buffer (get-buffer-create linux-disk--udisksctl-buffer)
     (erase-buffer)
     (local-set-key "q" #'quit-window)
@@ -276,6 +277,7 @@ If a string is given as the value of this variable, it is run as a terminal
                 :command (cons "udisksctl" args)))
 
 (defun linux-disk--udisksctl-sentinel (_ event)
+  "Process sentinel for udisksctl responding to EVENT."
   (when (or (string-prefix-p "failed with code " event)
             (string-prefix-p "exited abnormally with code " event))
     (message "udisksctl failed or exited abnormally with non-zero exit code")
@@ -313,7 +315,7 @@ This function may prompt some information to the user if needed."
                     (buffer-list)))
 
 (defun linux-disk--buffer-under-root-p (root buf)
-  "Test if a buffer (BUF) is associated with a path under ROOT."
+  "Test if ROOT is an ancestor of BUF."
   (cl-loop for path in (list (buffer-file-name buf)
                              (with-current-buffer buf default-directory))
            when (and path
@@ -337,6 +339,9 @@ This is done by running either lsof (preferred) or fuser command."
       (message "There is a process accessing %s:\n%s" mountpoint procs))
     (null procs)))
 
+(defconst linux-disk-lsof-buffer "*lsof*"
+  "The name of the buffer to display the output from lsof command.")
+
 (defun linux-disk--lsof (path)
   "Run lsof command on PATH and return its output."
   (with-current-buffer (get-buffer-create linux-disk-lsof-buffer)
@@ -344,8 +349,8 @@ This is done by running either lsof (preferred) or fuser command."
     (when (= 0 (call-process "lsof" nil '(t nil) nil path))
       (buffer-string))))
 
-(defconst linux-disk-lsof-buffer "*lsof*"
-  "The name of the buffer to display the output from lsof command.")
+(defconst linux-disk-fuser-buffer "*fuser*"
+  "The name of the buffer to display the output from fuser command.")
 
 (defun linux-disk--fuser (mountpoint)
   "Run fuser command on MOUNTPOINT and return its output."
@@ -353,9 +358,6 @@ This is done by running either lsof (preferred) or fuser command."
     (erase-buffer)
     (when (= 0 (call-process "fuser" nil '(t nil) nil "-m" mountpoint))
       (buffer-string))))
-
-(defconst linux-disk-fuser-buffer "*fuser*"
-  "The name of the buffer to display the output from fuser command.")
 
 (provide 'linux-disk)
 ;;; linux-disk.el ends here

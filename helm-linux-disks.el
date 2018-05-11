@@ -71,7 +71,7 @@
                    (interactive)
                    (let ((mountpoint (linux-disk-mountpoint struct)))
                      (unless mountpoint
-                       (error "not mounted"))
+                       (error "Not mounted"))
                      (helm-find-files-1 (file-name-as-directory mountpoint)))))
               ("info (udisksctl)" . linux-disk-udisksctl-info)
               ("power off the device" . linux-disk-udisksctl-poweroff))
@@ -100,7 +100,9 @@
                           :has-child-p has-child))))
 
 (defun helm-linux-disks--lsblk-trim (raw)
-  "Trim control characters and white spaces from an output line of lsblk command."
+  "Trim control characters and white spaces from an output of lsblk command.
+
+RAW is a line in the output of lsblk command."
   (if (string-match "\\(/.+\\)$" raw)
       (match-string 1 raw)
     raw))
@@ -113,7 +115,7 @@
                          "-o" "name,mountpoint,fstype,type,size")))
 
 (defun helm-linux-disks--lsblk-get-level (output)
-  "Get the level of a record from an output of lsblk command.
+  "Get the level of a record from an OUTPUT of lsblk command.
 
 A level is the starting position of the first slash character."
   (seq-position output ?/))
@@ -128,8 +130,7 @@ A level is the starting position of the first slash character."
                     (cl-loop for s in (process-lines "sudo" "vgs"
                                                      "--noheadings")
                              collect (cons s (car (split-string s)))))))
-  "An auxiliary Helm source containing a list of LVM volume groups for
- `helm-linux-disks'.
+  "Helm source containing a list of LVM volume groups for `helm-linux-disks'.
 
 This is useful for removing a device with a LVM physical volume.")
 
