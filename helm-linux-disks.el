@@ -1,10 +1,11 @@
-;;; helm-linux-disks.el --- Helm interface for managing removable volumes in Linux -*- lexical-binding: t -*-
+;;; helm-linux-disks.el --- Mount/unmount volumes in Linux via Helm -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2018 by Akira Komamura
 
 ;; Author: Akira Komamura <akira.komamura@gmail.com>
 ;; Version: 0.1.0
 ;; Package-Requires: ((emacs "25.1") (helm "1.9.4"))
+;; Keywords: unix
 ;; URL: https://github.com/akirak/helm-linux-disks
 
 ;; This file is not part of GNU Emacs.
@@ -84,13 +85,13 @@
            for next-level = (when kdr (caar kdr))
            for has-child = (and next-level
                                 (< level next-level))
-           for (name mountpoint fstype type uuid) = (pcase (split-string
-                                                            (helm-linux-disks--lsblk-trim raw))
-                                                      (`(,name ,type ,size)
-                                                       (list name nil nil type nil size))
-                                                      (`(,name ,fstype ,type ,size)
-                                                       (list name nil fstype type size))
-                                                      (fields fields))
+           for (name mountpoint fstype type _size) = (pcase (split-string
+                                                             (helm-linux-disks--lsblk-trim raw))
+                                                       (`(,name ,type ,size)
+                                                        (list name nil nil type nil size))
+                                                       (`(,name ,fstype ,type ,size)
+                                                        (list name nil fstype type size))
+                                                       (fields fields))
            collect (cons raw
                          (make-linux-disk
                           :path name

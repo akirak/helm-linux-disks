@@ -5,6 +5,7 @@
 ;; Author: Akira Komamura <akira.komamura@gmail.com>
 ;; Version: 0.1.0
 ;; Package-Requires: ((emacs "25.1"))
+;; Keywords: unix
 ;; URL: https://github.com/akirak/helm-linux-disks
 
 ;; This file is not part of GNU Emacs.
@@ -27,13 +28,15 @@
 ;;; Commentary:
 
 ;; This library defines `linux-disk' CL object as well as a bunch of operations
-;; on the object type. `linux-disk' object holds information on a block device
+;; on the object type.  `linux-disk' object holds information on a block device
 ;; which can be retrieved by lsblk command.
 
 ;;; Code:
 
 (require 'cl-lib)
 (require 'subr-x)
+
+(declare-function multi-term "multi-term")
 
 ;; This object holds information on each record in the output from lsblk command.
 ;; See helm-linux-disks.el on parsing.
@@ -78,8 +81,8 @@
 (defun linux-disk-dwim (struct)
   "Mount (unlock) or unmount (lock) the device depending on the state of STRUCT.
 
-STRUCT should be a `linux-disk' object. If the argument represents an unmounted
-\(locked) device, it is mounted (unlocked). If the argument represents a mounted
+STRUCT should be a `linux-disk' object.  If the argument represents an unmounted
+\(locked) device, it is mounted (unlocked).  If the argument represents a mounted
 \(unlocked) device, it is unmounted (locked)."
   (cond
    ((linux-disk-mounted-p struct) (linux-disk-unmount struct))
@@ -182,7 +185,7 @@ by udisks."
 (defun linux-disk-udisksctl-poweroff (struct)
   "Power off a device using udisksctl command.
 
-STRUCT should be a `linux-disk' object representing a physical device. This is
+STRUCT should be a `linux-disk' object representing a physical device.  This is
 normally the entire device such as /dev/sdb."
   (let ((path (linux-disk-path struct)))
     (when (yes-or-no-p (format "Are you sure you want to power off %s? "
@@ -195,8 +198,8 @@ normally the entire device such as /dev/sdb."
 (defun linux-disk-cryptsetup-luks-close (struct)
   "Close (lock) a dm-crypt target using cryptsetup command.
 
-STRUCT should be a `linux-disk' object representing a physical device. This
-normally has a dynamically mapped path like /dev/mapper/luks-XXXX."
+STRUCT should be a `linux-disk' object representing a physical device.
+This normally has a dynamically mapped path like /dev/mapper/luks-XXXX."
   (if (or (linux-disk-crypt-target-p struct)
           (linux-disk-luks-open-p struct))
       (let ((path (linux-disk-path struct)))
@@ -214,7 +217,7 @@ normally has a dynamically mapped path like /dev/mapper/luks-XXXX."
 (defun linux-disk-dired (struct)
   "Run dired on the mount point of STRUCT.
 
-STRUCT should be a `linux-disk' object representing a mounted device. It also
+STRUCT should be a `linux-disk' object representing a mounted device.  It also
 needs to contain information on the mount point."
   (let ((mountpoint (linux-disk-mountpoint struct)))
     (unless mountpoint
@@ -224,7 +227,7 @@ needs to contain information on the mount point."
 (defun linux-disk-dired-other-window (struct)
   "Run dired on the mount point of STRUCT in another window.
 
-STRUCT should be a `linux-disk' object representing a mounted device. It also
+STRUCT should be a `linux-disk' object representing a mounted device.  It also
 needs to contain information on the mount point."
   (let ((mountpoint (linux-disk-mountpoint struct)))
     (unless mountpoint
@@ -248,7 +251,7 @@ If a string is given as the value of this variable, it is run as a terminal
 (defun linux-disk-terminal (struct)
   "Open a terminal on the mount point of STRUCT.
 
-STRUCT should be a `linux-disk' object representing a mounted device. It also
+STRUCT should be a `linux-disk' object representing a mounted device.  It also
 needs to contain information on the mount point."
   (let ((mountpoint (linux-disk-mountpoint struct)))
     (unless mountpoint
@@ -327,8 +330,8 @@ This function may prompt some information to the user if needed."
 (defun linux-disk--ensure-no-process-running-in-dir (mountpoint)
   "Check if any external process is accessing MOUNTPOINT.
 
-This function returns non-nil if there is no such process. If there is a process
-accessing the mount point, this function returns nil.
+This function returns non-nil if there is no such process.
+If there is a process accessing the mount point, this function returns nil.
 
 This is done by running either lsof (preferred) or fuser command."
   (let ((procs (cond
