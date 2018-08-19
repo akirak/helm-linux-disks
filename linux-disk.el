@@ -245,6 +245,7 @@ If a string is given as the value of this variable, it is run as a terminal
                  (const ansi-term)
                  (const multi-term)
                  (const eshell)
+                 function
                  string)
   :group 'linux-disk)
 
@@ -262,6 +263,7 @@ needs to contain information on the mount point."
         ('ansi-term (call-interactively 'ansi-term))
         ('multi-term (progn (require 'multi-term) (multi-term)))
         ('eshell (eshell t))
+        ((pred functionp) (funcall linux-disk-terminal-type))
         ((pred stringp) (async-shell-command linux-disk-terminal-type))))))
 
 ;;;; udisksctl utilities
