@@ -310,9 +310,8 @@ needs to contain information on the mount point."
 ;;;###autoload
 (defun linux-disk-lsblk-process-lines (&rest args)
   "Call `process-lines` on lsblk with ARGS."
-  (when-let ((s (apply #'linux-disk--read-process "lsblk"
-                       linux-disk-lsblk-executable args)))
-    (split-string s "\n" t)))
+  (apply #'linux-disk-process-lines
+         "lsblk" linux-disk-lsblk-executable args))
 
 ;;;; udisksctl utilities
 (defconst linux-disk--udisksctl-buffer "*udisksctl*"
@@ -368,6 +367,16 @@ Otherwise, it returns nil."
     (with-temp-buffer
       (when (= 0 (apply #'call-process (car l) nil '(t nil) nil (cdr l)))
         (buffer-string)))))
+
+;;;###autoload
+(defun linux-disk-process-lines (name executable &rest args)
+  "Call `process-lines` on a given command, possibly with sudo.
+
+This is a variant of `linux-disk--read-process' which returns the
+output as a list of strings split by newlines."
+  (when-let ((s (apply #'linux-disk--read-process name executable
+                       args)))
+    (split-string s "\n" t)))
 
 (defun linux-disk-ensure-unmountable (mountpoint)
   "Return non-nil if a device at MOUNTPOINT is ready to unmount.
