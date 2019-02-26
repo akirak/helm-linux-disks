@@ -48,10 +48,13 @@
 ;; See helm-linux-disks.el on parsing.
 (cl-defstruct linux-disk path mountpoint fstype type size has-child-p)
 
-(defcustom linux-disk-use-sudo t
-  "When non-nil, use sudo for running disk commands, e.g. lsblk."
+(defcustom linux-disk-commands-without-sudo nil
+  "List of commands that can be run by the user without sudo."
   :group 'linux-disk
-  :type 'boolean)
+  :type '(set (const "udisksctl")
+              (const "lsof")
+              (const "fuser")
+              (const "lsblk")))
 
 (defcustom linux-disk-udisksctl-executable "udisksctl"
   "Executable of udisksctl."
@@ -307,10 +310,9 @@ needs to contain information on the mount point."
 ;;;###autoload
 (defun linux-disk-lsblk-process-lines (&rest args)
   "Call `process-lines` on lsblk with ARGS."
-  (apply #'process-lines
-         (if linux-disk-use-sudo
-             `("sudo" ,linux-disk-lsblk-executable . ,args)
-           (cons linux-disk-lsblk-executable args))))
+  (when-let ((s (apply #'linux-disk--read-process "lsblk"
+                       linux-disk-lsblk-executable args)))
+    (split-string s "\n" t)))
 
 ;;;; udisksctl utilities
 (defconst linux-disk--udisksctl-buffer "*udisksctl*"
@@ -325,7 +327,8 @@ needs to contain information on the mount point."
   (make-process :name name
                 :buffer linux-disk--udisksctl-buffer
                 :sentinel #'linux-disk--udisksctl-sentinel
-                :command (cons linux-disk-udisksctl-executable args)))
+                :command (linux-disk--get-command-line
+                          "udisksctl" linux-disk-udisksctl-executable args)))
 
 (defun linux-disk--udisksctl-sentinel (_ event)
   "Process sentinel for udisksctl responding to EVENT."
@@ -335,6 +338,36 @@ needs to contain information on the mount point."
     (display-buffer linux-disk--udisksctl-buffer)))
 
 ;;;; Other utility functions
+
+(defun linux-disk--get-command-line (name executable args)
+  "Get a list of a command and its arguments.
+
+This function returns a command line that may start with sudo
+according to the value of `linux-disk-commands-without-sudo'.
+
+NAME is the name of the program that is possibly contained in
+`linux-disk-commands-without-sudo'.
+
+EXECUTABLE is the executable name of the program that can be an
+absolute path set by the user.
+
+ARGS is a list of command line arguments passed to the program."
+  (if (member name linux-disk-commands-without-sudo)
+      `("sudo" ,executable . ,args)
+    (cons executable args)))
+
+(defun linux-disk--read-process (name executable &rest args)
+  "Run a command and return its output if it is successful.
+
+This uses `linux-disk--get-command-line' to build a proper command
+line for NAME, EXECUTABLE, and ARGS.
+
+If the command exits with zero, return its standard output.
+Otherwise, it returns nil."
+  (let ((l (linux-disk--get-command-line name executable args)))
+    (with-temp-buffer
+      (when (= 0 (apply #'call-process (car l) nil '(t nil) nil (cdr l)))
+        (buffer-string)))))
 
 (defun linux-disk-ensure-unmountable (mountpoint)
   "Return non-nil if a device at MOUNTPOINT is ready to unmount.
@@ -393,27 +426,15 @@ This is done by running either lsof (preferred) or fuser command."
       (message "There is a process accessing %s:\n%s" mountpoint procs))
     (null procs)))
 
-(defconst linux-disk-lsof-buffer "*lsof*"
-  "The name of the buffer to display the output from lsof command.")
-
 (defun linux-disk--lsof (path)
   "Run lsof command on PATH and return its output."
-  (with-current-buffer (get-buffer-create linux-disk-lsof-buffer)
-    (erase-buffer)
-    (when (= 0 (call-process linux-disk-lsof-executable
-                             nil '(t nil) nil path))
-      (buffer-string))))
-
-(defconst linux-disk-fuser-buffer "*fuser*"
-  "The name of the buffer to display the output from fuser command.")
+  (linux-disk--read-process "lsof" linux-disk-lsof-executable
+                            path))
 
 (defun linux-disk--fuser (mountpoint)
   "Run fuser command on MOUNTPOINT and return its output."
-  (with-current-buffer (get-buffer-create linux-disk-fuser-buffer)
-    (erase-buffer)
-    (when (= 0 (call-process linux-disk-fuser-executable
-                             nil '(t nil) nil "-m" mountpoint))
-      (buffer-string))))
+  (linux-disk--read-process "fuser" linux-disk-fuser-executable
+                            "-m" mountpoint))
 
 (provide 'linux-disk)
 ;;; linux-disk.el ends here
