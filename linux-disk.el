@@ -53,6 +53,21 @@
   :group 'linux-disk
   :type 'boolean)
 
+(defcustom linux-disk-udisksctl-executable "udisksctl"
+  "Executable of udisksctl."
+  :group 'linux-disk
+  :type 'string)
+
+(defcustom linux-disk-lsof-executable "lsof"
+  "Executable of lsof."
+  :group 'linux-disk
+  :type 'string)
+
+(defcustom linux-disk-fuser-executable "fuser"
+  "Executable of fuser."
+  :group 'linux-disk
+  :type 'string)
+
 ;;;; Predicates
 
 (defun linux-disk-mounted-p (struct)
@@ -87,6 +102,11 @@
   "Return non-nil if STRUCT is a normal disk device."
   (eq (linux-disk-type struct) 'disk))
 
+(defun linux-disk--has-executable-p (executable)
+  (or (and (file-name-absolute-p executable)
+           (file-executable-p executable))
+      (executable-find executable)))
+
 ;;;; Operations
 
 (defun linux-disk-dwim (struct)
@@ -112,7 +132,7 @@ object."
   (unless (linux-disk-mountable-p struct)
     (error "Not mountable"))
   (cond
-   ((executable-find "udisksctl") (linux-disk-udisksctl-mount struct))
+   ((linux-disk--has-executable-p "udisksctl") (linux-disk-udisksctl-mount struct))
    ;; TODO: mount using mount
    (t (error "Command udisksctl is not available"))))
 
@@ -123,7 +143,7 @@ STRUCT must be a `linux-disk' object representing an mounted file system object.
   (unless (linux-disk-mounted-p struct)
     (error "Not mounted"))
   (cond
-   ((executable-find "udisksctl") (linux-disk-udisksctl-unmount struct))
+   ((linux-disk--has-executable-p "udisksctl") (linux-disk-udisksctl-unmount struct))
    ;; TODO: unmount using umount
    (t (error "Command udisksctl is not available"))))
 
@@ -174,7 +194,7 @@ STRUCT must be a `linux-disk' object representing an open LUKS device."
   (let ((path (linux-disk-path struct)))
     (message "unlocking %s..." path)
     (eshell-command
-     (string-join (list "udisksctl"
+     (string-join (list (shell-quote-argument linux-disk-udisksctl-executable)
                         "unlock"
                         "--block-device"
                         (shell-quote-argument path))
@@ -186,7 +206,7 @@ STRUCT must be a `linux-disk' object representing an open LUKS device."
 STRUCT should be a `linux-disk' object on any block device that can be handled
 by udisks."
   (let ((buf (generate-new-buffer-name "*udisksctl info*")))
-    (call-process "udisksctl" nil buf t
+    (call-process linux-disk-udisksctl-executable nil buf t
                   "info" "--block-device" (linux-disk-path struct))
     (with-current-buffer buf
       (local-set-key (kbd "q") #'quit-window)
@@ -305,7 +325,7 @@ needs to contain information on the mount point."
   (make-process :name name
                 :buffer linux-disk--udisksctl-buffer
                 :sentinel #'linux-disk--udisksctl-sentinel
-                :command (cons "udisksctl" args)))
+                :command (cons linux-disk-udisksctl-executable args)))
 
 (defun linux-disk--udisksctl-sentinel (_ event)
   "Process sentinel for udisksctl responding to EVENT."
@@ -364,8 +384,11 @@ If there is a process accessing the mount point, this function returns nil.
 This is done by running either lsof (preferred) or fuser command."
   (let ((procs (cond
                 ;; TODO: Kill the processes
-                ((executable-find "lsof") (linux-disk--lsof mountpoint))
-                ((executable-find "fuser") (linux-disk--fuser mountpoint)))))
+                ((linux-disk--has-executable-p linux-disk-lsof-executable)
+                 (linux-disk--lsof mountpoint))
+                ((linux-disk--has-executable-p linux-disk-fuser-executable)
+                 (linux-disk--fuser mountpoint))
+                (t (user-error "Either lsof or fuser is required to check the mount point")))))
     (when procs
       (message "There is a process accessing %s:\n%s" mountpoint procs))
     (null procs)))
@@ -377,7 +400,8 @@ This is done by running either lsof (preferred) or fuser command."
   "Run lsof command on PATH and return its output."
   (with-current-buffer (get-buffer-create linux-disk-lsof-buffer)
     (erase-buffer)
-    (when (= 0 (call-process "lsof" nil '(t nil) nil path))
+    (when (= 0 (call-process linux-disk-lsof-executable
+                             nil '(t nil) nil path))
       (buffer-string))))
 
 (defconst linux-disk-fuser-buffer "*fuser*"
@@ -387,7 +411,8 @@ This is done by running either lsof (preferred) or fuser command."
   "Run fuser command on MOUNTPOINT and return its output."
   (with-current-buffer (get-buffer-create linux-disk-fuser-buffer)
     (erase-buffer)
-    (when (= 0 (call-process "fuser" nil '(t nil) nil "-m" mountpoint))
+    (when (= 0 (call-process linux-disk-fuser-executable
+                             nil '(t nil) nil "-m" mountpoint))
       (buffer-string))))
 
 (provide 'linux-disk)
