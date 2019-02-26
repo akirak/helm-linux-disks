@@ -290,7 +290,7 @@ needs to contain information on the mount point."
   (apply #'process-lines
          (if linux-disk-use-sudo
              `("sudo" ,linux-disk-lsblk-executable . ,args)
-           (linux-disk-lsblk-executable . args))))
+           (cons linux-disk-lsblk-executable args))))
 
 ;;;; udisksctl utilities
 (defconst linux-disk--udisksctl-buffer "*udisksctl*"
