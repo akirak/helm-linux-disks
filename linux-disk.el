@@ -38,9 +38,20 @@
 
 (declare-function multi-term "multi-term")
 
+(defgroup linux-disk
+  nil
+  "Linux removable storage support via Helm."
+  :group 'helm
+  :group 'unix)
+
 ;; This object holds information on each record in the output from lsblk command.
 ;; See helm-linux-disks.el on parsing.
 (cl-defstruct linux-disk path mountpoint fstype type size has-child-p)
+
+(defcustom linux-disk-use-sudo t
+  "When non-nil, use sudo for running disk commands, e.g. lsblk."
+  :group 'linux-disk
+  :type 'boolean)
 
 ;;;; Predicates
 
@@ -265,6 +276,21 @@ needs to contain information on the mount point."
         ('eshell (eshell t))
         ((pred functionp) (funcall linux-disk-terminal-type))
         ((pred stringp) (async-shell-command linux-disk-terminal-type))))))
+
+;;;; lsblk
+
+(defcustom linux-disk-lsblk-executable "lsblk"
+  "Executable file of lsblk command."
+  :group 'linux-disk
+  :type 'string)
+
+;;;###autoload
+(defun linux-disk-lsblk-process-lines (&rest args)
+  "Call `process-lines` on lsblk with ARGS."
+  (apply #'process-lines
+         (if linux-disk-use-sudo
+             `("sudo" ,linux-disk-lsblk-executable . ,args)
+           (linux-disk-lsblk-executable . args))))
 
 ;;;; udisksctl utilities
 (defconst linux-disk--udisksctl-buffer "*udisksctl*"

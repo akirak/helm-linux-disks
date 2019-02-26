@@ -112,8 +112,8 @@ RAW is a line in the output of lsblk command."
   "Run lsblk command and annotate each line with its level."
   (mapcar (lambda (raw-output)
             (cons (helm-linux-disks--lsblk-get-level raw-output) raw-output))
-          (process-lines "sudo" "lsblk" "-n" "-p"
-                         "-o" "name,mountpoint,fstype,type,size")))
+          (linux-disk-lsblk-process-lines "-n" "-p"
+                                          "-o" "name,mountpoint,fstype,type,size")))
 
 (defun helm-linux-disks--lsblk-get-level (output)
   "Get the level of a record from an OUTPUT of lsblk command.
