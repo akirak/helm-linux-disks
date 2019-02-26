@@ -4,7 +4,7 @@
 
 ;; Author: Akira Komamura <akira.komamura@gmail.com>
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "25.1") (helm "1.9.4"))
+;; Package-Requires: ((emacs "25.1") (helm "1.9.4") (s "1.12"))
 ;; Keywords: unix
 ;; URL: https://github.com/akirak/helm-linux-disks
 
@@ -36,6 +36,7 @@
 (require 'helm)
 (require 'cl-lib)
 (require 'seq)
+(require 's)
 
 ;;;###autoload
 (defun helm-linux-disks ()
@@ -75,38 +76,64 @@
                        (error "Not mounted"))
                      (helm-find-files-1 (file-name-as-directory mountpoint)))))
               ("info (udisksctl)" . linux-disk-udisksctl-info)
-              ("power off the device" . linux-disk-udisksctl-poweroff))
+              ("power off the device" . linux-disk-udisksctl-poweroff)
+              ("princ (for debugging)" . princ))
     :candidates 'helm-linux-disks--lsblk)
   "The primary Helm source for `helm-linux-disks'.")
+
+(defun helm-linux-disks--rx-lsblk-entry (&rest fields)
+  "Construct a regexp pattern for lsblk entry containing FIELDS."
+  (concat "\\`[[:space:]]*[[:cntrl:]]*"
+          (mapconcat (lambda (s)
+                       (concat "\\("
+                               (pcase s
+                                 ('name (rx "/" (+? any)))
+                                 ('mountpoint (rx "/" (+? any)))
+                                 ('fstype (rx (+ alnum)))
+                                 ('type (rx (+ alpha)))
+                                 ('size (rx (+ (any "." digit)) (+ upper))))
+                               "\\)"))
+                     fields
+                     "[[:space:]]+")
+          "\\'"))
+
+(defun helm-linux-disks--match-lsblk (s &rest fields)
+  "Check if S match FIELDS."
+  (cdr (s-match (apply #'helm-linux-disks--rx-lsblk-entry fields) s)))
 
 (defun helm-linux-disks--lsblk ()
   "Get an alist of candidates for `helm-linux-disks--lsblk-source'."
   (cl-loop for ((level . raw) . kdr) on (helm-linux-disks--lsblk-with-levels)
-           for next-level = (when kdr (caar kdr))
-           for has-child = (and next-level
-                                (< level next-level))
-           for (name mountpoint fstype type _size) = (pcase (split-string
-                                                             (helm-linux-disks--lsblk-trim raw))
-                                                       (`(,name ,type ,size)
-                                                        (list name nil nil type nil size))
-                                                       (`(,name ,fstype ,type ,size)
-                                                        (list name nil fstype type size))
-                                                       (fields fields))
-           collect (cons raw
-                         (make-linux-disk
-                          :path name
-                          :mountpoint mountpoint
-                          :fstype fstype
-                          :type (intern type)
-                          :has-child-p has-child))))
-
-(defun helm-linux-disks--lsblk-trim (raw)
-  "Trim control characters and white spaces from an output of lsblk command.
-
-RAW is a line in the output of lsblk command."
-  (if (string-match "\\(/.+\\)$" raw)
-      (match-string 1 raw)
-    raw))
+           collect (let* ((next-level (when kdr (caar kdr)))
+                          (has-child (and next-level
+                                          (< level next-level))))
+                     (cons raw
+                           (pcase _
+                             ((let `(,name ,mountpoint ,fstype ,type ,_size)
+                                (helm-linux-disks--match-lsblk raw 'name 'mountpoint 'fstype 'type 'size))
+                              (make-linux-disk
+                               :path name
+                               :mountpoint mountpoint
+                               :fstype fstype
+                               :type (intern type)
+                               :has-child-p has-child))
+                             ((let `(,name ,type ,_size)
+                                (helm-linux-disks--match-lsblk raw 'name 'type 'size))
+                              (make-linux-disk
+                               :path name
+                               :mountpoint nil
+                               :fstype nil
+                               :type (intern type)
+                               :has-child-p has-child))
+                             ((let `(,name ,fstype ,type ,_size)
+                                (helm-linux-disks--match-lsblk raw 'name 'fstype 'type 'size))
+                              (make-linux-disk
+                               :path name
+                               :mountpoint nil
+                               :fstype fstype
+                               :type (intern type)
+                               :has-child-p has-child))
+                             (_ (error "Failed to parse %s" raw)))))))
 
 (defun helm-linux-disks--lsblk-with-levels ()
   "Run lsblk command and annotate each line with its level."

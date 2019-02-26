@@ -22,6 +22,7 @@
 
 - Emacs 25.1
 - Helm
+- s
 - [udisks2](https://wiki.archlinux.org/index.php/Udisks) package and `udisksctl` command
 
 Because udisks2 is specific to Linux, `helm-linux-disks` is for Linux.
