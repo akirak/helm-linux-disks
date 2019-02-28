@@ -47,7 +47,7 @@
                    helm-linux-disks--vgs-source)))
 
 (defvar helm-linux-disks--lsblk-source
-  (helm-build-sync-source "lsblk (-o name,mountpoint,fstype,type,size)"
+  (helm-build-sync-source "lsblk (-o name,fstype,type,size,mountpoint)"
     :action '(("dwim (mount/unmount)" . linux-disk-dwim)
               ("mount (udisksctl)" . linux-disk-udisksctl-mount)
               ;; TODO
@@ -75,7 +75,8 @@
                        (error "Not mounted"))
                      (helm-find-files-1 (file-name-as-directory mountpoint)))))
               ("info (udisksctl)" . linux-disk-udisksctl-info)
-              ("power off the device" . linux-disk-udisksctl-poweroff))
+              ("power off the device" . linux-disk-udisksctl-poweroff)
+              ("princ" . princ))
     :candidates 'helm-linux-disks--lsblk)
   "The primary Helm source for `helm-linux-disks'.")
 
@@ -85,13 +86,23 @@
            for next-level = (when kdr (caar kdr))
            for has-child = (and next-level
                                 (< level next-level))
-           for (name mountpoint fstype type _size) = (pcase (split-string
+           for (name fstype type _size mountpoint) = (pcase (split-string
                                                              (helm-linux-disks--lsblk-trim raw))
                                                        (`(,name ,type ,size)
-                                                        (list name nil nil type nil size))
+                                                        (list name nil type nil size nil))
+                                                       ;; Workaround for a device without fstype
+                                                       ;; https://github.com/akirak/helm-linux-disks/issues/3
+                                                       ((and `(,name ,type ,size ,mountpoint)
+                                                             (guard (string-prefix-p "/" mountpoint)))
+                                                        (list name nil type size mountpoint))
+                                                       ;; Unmounted device
                                                        (`(,name ,fstype ,type ,size)
-                                                        (list name nil fstype type size))
-                                                       (fields fields))
+                                                        (list name fstype type size nil))
+                                                       (fields
+                                                        (append (seq-take fields 4)
+                                                                (string-join
+                                                                 (seq-drop fields 4)
+                                                                 " "))))
            collect (cons raw
                          (make-linux-disk
                           :path name
@@ -113,7 +124,7 @@ RAW is a line in the output of lsblk command."
   (mapcar (lambda (raw-output)
             (cons (helm-linux-disks--lsblk-get-level raw-output) raw-output))
           (linux-disk-lsblk-process-lines "-n" "-p"
-                                          "-o" "name,mountpoint,fstype,type,size")))
+                                          "-o" "name,fstype,type,size,mountpoint")))
 
 (defun helm-linux-disks--lsblk-get-level (output)
   "Get the level of a record from an OUTPUT of lsblk command.
